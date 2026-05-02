@@ -82,21 +82,24 @@ export default function AlbumCard({ album, onUpdate }: AlbumCardProps) {
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
           {isEditing ? (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full">
               <input
                 autoFocus
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleUpdateName()}
-                className="w-full bg-indigo-50 dark:bg-indigo-900/20 px-3 py-1.5 rounded-xl border border-indigo-200 dark:border-indigo-800 outline-none font-bold text-lg"
+                className="flex-1 min-w-0 bg-slate-100 dark:bg-slate-800 px-4 py-2 rounded-xl border-2 border-indigo-500 outline-none font-bold text-base text-slate-900 dark:text-white placeholder:text-slate-400"
+                placeholder="Album name..."
               />
-              <button onClick={handleUpdateName} className="p-2 text-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 rounded-lg">
-                <Check size={20} />
-              </button>
-              <button onClick={() => { setName(album.name); setIsEditing(false); }} className="p-2 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-lg">
-                <X size={20} />
-              </button>
+              <div className="flex gap-1 shrink-0">
+                <button onClick={handleUpdateName} className="p-2 text-emerald-500 hover:bg-emerald-100 dark:hover:bg-emerald-900/40 rounded-xl transition-colors">
+                  <Check size={20} />
+                </button>
+                <button onClick={() => { setName(album.name); setIsEditing(false); }} className="p-2 text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-900/40 rounded-xl transition-colors">
+                  <X size={20} />
+                </button>
+              </div>
             </div>
           ) : (
             <div className="flex items-center gap-2 cursor-pointer" onClick={() => setIsEditing(true)}>
@@ -139,9 +142,9 @@ export default function AlbumCard({ album, onUpdate }: AlbumCardProps) {
               <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 transition-opacity flex items-center justify-center">
                 <button 
                   onClick={() => handleDeleteImage(img.publicId)}
-                  className="p-2 bg-white/20 backdrop-blur-md text-white rounded-xl hover:bg-rose-500 transition-colors"
+                  className="p-3 bg-white/20 backdrop-blur-xl text-white rounded-2xl hover:bg-rose-500 transition-all hover:scale-110 active:scale-95"
                 >
-                  <Trash2 size={16} />
+                  <Trash2 size={18} />
                 </button>
               </div>
             </motion.div>

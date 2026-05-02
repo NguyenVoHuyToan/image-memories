@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, User, FileText, Check, Loader2, Camera } from 'lucide-react';
+import { X, User, FileText, Check, Loader2, Camera, ShieldCheck } from 'lucide-react';
 import { updateUserProfileAction, uploadAvatarAction } from '@/lib/actions/userActions';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
@@ -48,7 +48,6 @@ export default function ProfileModal({ isOpen, onClose, user: initialUser }: Pro
       const res = await uploadAvatarAction(formData);
       if (res.success) {
         setAvatar(res.url);
-        // Instant update in context
         setUser({ ...user, avatar: res.url });
         toast.success('Avatar updated!');
         router.refresh();
@@ -86,88 +85,97 @@ export default function ProfileModal({ isOpen, onClose, user: initialUser }: Pro
   return (
     <AnimatePresence>
       {isOpen && (
-        <div className="fixed inset-0 z-300 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-300 flex items-center justify-center p-6">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-slate-950/40 backdrop-blur-sm"
+            className="absolute inset-0 bg-slate-950/60 backdrop-blur-md"
             onClick={onClose}
           />
           <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="relative w-full max-w-md overflow-hidden rounded-4xl bg-white p-8 shadow-2xl dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            className="relative w-full max-w-xl overflow-hidden rounded-[3.5rem] bg-white dark:bg-slate-900 p-10 shadow-3xl border border-white/50 dark:border-slate-800"
           >
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Settings</h2>
+            <div className="mb-10 flex items-center justify-between">
+              <div>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter uppercase">Settings</h2>
+                <div className="mt-1 flex items-center gap-2 text-indigo-500 font-bold text-[10px] uppercase tracking-widest">
+                  <ShieldCheck size={14} />
+                  Safe & Secure Profile
+                </div>
+              </div>
               <button 
                 onClick={onClose}
-                className="rounded-xl p-2 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="rounded-2xl p-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-all text-slate-400"
                 disabled={isUpdating || isUploadingAvatar}
               >
-                <X size={20} />
+                <X size={24} />
               </button>
             </div>
 
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex flex-col items-center mb-8">
+            <form onSubmit={handleSubmit} className="space-y-8">
+              {/* Avatar Section */}
+              <div className="flex justify-center mb-10">
                 <div className="relative group cursor-pointer" onClick={handleAvatarClick}>
-                  <div className="h-28 w-28 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center border-4 border-white dark:border-slate-800 shadow-xl overflow-hidden relative">
+                  <div className="h-32 w-32 rounded-[2.5rem] bg-slate-100 dark:bg-slate-800 flex items-center justify-center border-4 border-white dark:border-slate-900 shadow-2xl overflow-hidden relative transition-transform group-hover:scale-105 duration-500">
                     {avatar ? (
                       <img src={avatar} alt="Avatar" className="h-full w-full object-cover" />
                     ) : (
-                      <User size={56} className="text-slate-300" />
+                      <User size={64} className="text-slate-300" />
                     )}
                     
                     {isUploadingAvatar && (
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center backdrop-blur-[2px]">
-                        <Loader2 size={24} className="text-white animate-spin" />
+                      <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-sm">
+                        <Loader2 size={32} className="text-white animate-spin" />
                       </div>
                     )}
                   </div>
                   
-                  <div className="absolute bottom-1 right-1 h-9 w-9 bg-indigo-600 rounded-full border-4 border-white dark:border-slate-800 flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-transform">
-                    <Camera size={16} />
+                  <div className="absolute -bottom-2 -right-2 h-11 w-11 bg-indigo-600 rounded-2xl border-4 border-white dark:border-slate-900 flex items-center justify-center text-white shadow-xl group-hover:rotate-12 transition-all">
+                    <Camera size={18} />
                   </div>
                   <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileChange} />
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Username</label>
-                <div className="relative">
-                  <User size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                  <input
-                    type="text"
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    className="w-full h-14 pl-12 pr-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold"
-                    placeholder="Username"
-                    required
-                  />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2 col-span-full">
+                  <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">Username</label>
+                  <div className="relative">
+                    <User size={18} className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full h-16 pl-14 pr-6 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[1.5rem] outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-black text-slate-900 dark:text-white"
+                      placeholder="Username"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2 col-span-full">
+                  <label className="text-[10px] font-black uppercase tracking-[0.25em] text-slate-400 ml-1">About Me</label>
+                  <div className="relative">
+                    <FileText size={18} className="absolute left-5 top-5 text-slate-400" />
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value)}
+                      className="w-full min-h-[120px] pl-14 pr-6 py-5 bg-slate-50 dark:bg-slate-950 border border-slate-100 dark:border-slate-800 rounded-[1.5rem] outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all font-bold text-sm text-slate-600 dark:text-slate-300"
+                      placeholder="Share a bit about your story..."
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Bio</label>
-                <div className="relative">
-                  <FileText size={18} className="absolute left-4 top-4 text-slate-400" />
-                  <textarea
-                    value={bio}
-                    onChange={(e) => setBio(e.target.value)}
-                    className="w-full min-h-[80px] pl-12 pr-4 py-4 bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-medium text-sm"
-                    placeholder="Short bio..."
-                  />
-                </div>
-              </div>
-
-              <div className="pt-4 flex gap-3">
+              <div className="pt-6 flex gap-4">
                 <button
                   type="button"
                   onClick={onClose}
-                  className="flex-1 py-4 rounded-2xl bg-slate-50 text-sm font-black text-slate-600 hover:bg-slate-100 transition-all"
+                  className="flex-1 py-5 rounded-[1.5rem] bg-slate-50 dark:bg-slate-800 text-xs font-black uppercase tracking-widest text-slate-500 hover:bg-slate-100 transition-all"
                   disabled={isUpdating || isUploadingAvatar}
                 >
                   Cancel
@@ -175,10 +183,10 @@ export default function ProfileModal({ isOpen, onClose, user: initialUser }: Pro
                 <button
                   type="submit"
                   disabled={isUpdating || isUploadingAvatar}
-                  className="flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl bg-indigo-600 text-sm font-black text-white shadow-xl shadow-indigo-500/20 hover:bg-indigo-700 transition-all"
+                  className="flex-[2] flex items-center justify-center gap-3 py-5 rounded-[1.5rem] bg-linear-to-r from-indigo-600 to-violet-600 text-xs font-black uppercase tracking-widest text-white shadow-2xl shadow-indigo-500/30 hover:scale-105 active:scale-95 transition-all"
                 >
                   {isUpdating ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
-                  Save Changes
+                  Save Profile Info
                 </button>
               </div>
             </form>
