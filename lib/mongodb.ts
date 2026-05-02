@@ -1,20 +1,42 @@
 import mongoose from 'mongoose';
 
-/** 
- * Global is used here to maintain a cached connection across hot-reloads
- * in development. This prevents connections from growing exponentially
- * during API Route usage.
+/**
+ * Hàm hỗ trợ URL Encode password nếu người dùng chưa encode
+ * Giúp tránh lỗi "bad auth : authentication failed" khi mật khẩu chứa ký tự đặc biệt (@, #, !, ...)
  */
+function getSecureUri(uri: string): string {
+  try {
+    // Regex để tách phần: Protocol, User, Password, và Host
+    const regex = /^(mongodb(?:\+srv)?:\/\/[^:]+:)(.*)(@.*)$/;
+    const match = uri.match(regex);
+
+    if (match) {
+      const protocolAndUser = match[1]; // e.g. "mongodb+srv://admin:"
+      const password = match[2];        // e.g. "P@ssw0rd!"
+      const rest = match[3];            // e.g. "@cluster0.mongodb.net/db"
+
+      // Chỉ encode nếu mật khẩu chưa được encode (không chứa %)
+      const encodedPassword = password.includes('%') ? password : encodeURIComponent(password);
+      
+      return `${protocolAndUser}${encodedPassword}${rest}`;
+    }
+  } catch (err) {
+    console.error("⚠️ Error parsing MONGODB_URI for encoding:", err);
+  }
+  return uri;
+}
 
 const MONGODB_URI = process.env.MONGODB_URI;
 
 if (!MONGODB_URI) {
-  console.error('❌ MONGODB_URI is not defined in environment variables');
-  throw new Error('Please define the MONGODB_URI environment variable inside .env.local');
+  console.error('❌ CRITICAL ERROR: process.env.MONGODB_URI is undefined!');
+  throw new Error('Bạn chưa cấu hình biến môi trường MONGODB_URI. Hãy kiểm tra lại Tab Environment Variables trên Vercel hoặc file .env.local.');
 }
 
-/**
- * Global interface for NodeJS to allow mongoose caching
+const FINAL_URI = getSecureUri(MONGODB_URI);
+
+/** 
+ * Singleton Pattern for Serverless Environment (Vercel)
  */
 interface MongooseCache {
   conn: typeof mongoose | null;
@@ -39,25 +61,41 @@ async function dbConnect() {
   if (!cached?.promise) {
     const opts = {
       bufferCommands: false,
+      maxPoolSize: 10, // Giới hạn pool size cho Atlas Free Tier
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
     };
 
-    console.log('📡 Connecting to MongoDB Atlas...');
-    
-    // Ensure we don't have a fallback to localhost here
-    cached!.promise = mongoose.connect(MONGODB_URI!, opts).then((mongoose) => {
-      console.log('✅ MongoDB Connected successfully');
-      return mongoose;
-    }).catch(err => {
-      console.error('❌ MongoDB Connection Error:', err.message);
-      cached!.promise = null; // Reset promise on error so we can retry
-      throw err;
+    // Debugging (Bảo mật: Chỉ log phần cluster, không log password)
+    try {
+      const clusterInfo = FINAL_URI.split('@')[1] || "Unknown Cluster";
+      console.log(`📡 Đang kết nối tới Cluster: ${clusterInfo.split('/')[0]}`);
+    } catch (e) {
+      console.log("📡 Đang chuẩn bị kết nối tới MongoDB...");
+    }
+
+    cached!.promise = mongoose.connect(FINAL_URI, opts).then((mongooseInstance) => {
+      console.log('✅ Kết nối MongoDB thành công.');
+      return mongooseInstance;
+    }).catch((error) => {
+      // Phân loại lỗi chi tiết theo yêu cầu
+      if (error.code === 8000 || error.message.includes('Authentication failed')) {
+        console.error('❌ LỖI XÁC THỰC (Code 8000): Mật khẩu hoặc Username không đúng. Hãy kiểm tra lại ký tự đặc biệt hoặc cấu hình whitelist IP trên Atlas.');
+      } else if (error.message.includes('ETIMEDOUT') || error.message.includes('ECONNREFUSED')) {
+        console.error('❌ LỖI KẾT NỐI: Không thể kết nối tới server (Timeout/Refused). Có thể do lỗi mạng hoặc IP chưa được Whitelist trên Atlas.');
+      } else {
+        console.error('❌ LỖI MONGOOSE:', error.message);
+      }
+      
+      cached!.promise = null; // Reset để có thể thử lại ở lần request sau
+      throw error;
     });
   }
 
   try {
     cached!.conn = await cached!.promise;
   } catch (e) {
-    cached!.promise = null;
+    cached!.promise = null; // Tránh việc cache promise lỗi vĩnh viễn
     throw e;
   }
 
