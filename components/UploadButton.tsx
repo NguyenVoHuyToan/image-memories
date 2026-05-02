@@ -8,12 +8,13 @@ import { toast } from 'sonner';
 import { useDropzone } from 'react-dropzone';
 
 interface UploadButtonProps {
+  albumId: string;
   onSuccess: () => void;
 }
 
 const MAX_SIZE = 5 * 1024 * 1024;
 
-export default function UploadButton({ onSuccess }: UploadButtonProps) {
+export default function UploadButton({ albumId, onSuccess }: UploadButtonProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [files, setFiles] = useState<(File & { preview: string })[]>([]);
   const [isUploading, setIsUploading] = useState(false);
@@ -53,6 +54,7 @@ export default function UploadButton({ onSuccess }: UploadButtonProps) {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('title', file.name.split('.')[0]);
+        formData.append('albumId', albumId);
         
         try {
           const result = await uploadImageAction(formData);

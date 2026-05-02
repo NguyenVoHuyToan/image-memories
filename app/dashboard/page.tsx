@@ -2,26 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Loader2, Image as ImageIcon, Sparkles, Palette, Check, Search } from 'lucide-react';
+import { Loader2, FolderPlus, Palette, Check, LayoutGrid, List } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
-import UploadButton from '@/components/UploadButton';
-import ImageCard from '@/components/ImageCard';
-import { fetchImagesAction } from '@/lib/actions/imageActions';
-import { updateDashboardBackgroundAction } from '@/lib/actions/userActions';
+import { fetchAlbumsAction, createAlbumAction } from '@/lib/actions/albumActions';
+import AlbumCard from '@/components/AlbumCard';
 import { toast } from 'sonner';
-import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { useInView } from 'react-intersection-observer';
-import Masonry from 'react-masonry-css';
-import debounce from 'lodash.debounce';
 import { useUser } from '@/context/UserContext';
-
-interface ImageType {
-  _id: string;
-  url: string;
-  title: string;
-  tags?: string[];
-}
 
 const BACKGROUNDS = [
   { id: 'default', name: 'Clean', class: 'bg-slate-50 dark:bg-slate-950', dot: 'bg-slate-300' },
@@ -35,112 +22,95 @@ export default function Dashboard() {
   const { data: session, status } = useSession();
   const { user, setUser } = useUser();
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [debouncedQuery, setDebouncedQuery] = useState('');
+  
+  const [albums, setAlbums] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [showBgPicker, setShowBgPicker] = useState(false);
-
-  const { ref, inView } = useInView();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('list');
 
   const currentBackground = user?.dashboardBackground || 'default';
 
-  useEffect(() => {
-    const handler = debounce((val: string) => setDebouncedQuery(val), 500);
-    handler(searchQuery);
-    return () => handler.cancel();
-  }, [searchQuery]);
-
-  const {
-    data,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    status: queryStatus,
-    error,
-    refetch
-  } = useInfiniteQuery({
-    queryKey: ['images', session?.user?.email, debouncedQuery],
-    queryFn: ({ pageParam = 1 }) => fetchImagesAction(pageParam, 12, debouncedQuery),
-    initialPageParam: 1,
-    getNextPageParam: (lastPage: any, allPages: any[]) => {
-      return lastPage.success && lastPage.hasMore ? allPages.length + 1 : undefined;
-    },
-    enabled: !!session?.user,
-  });
+  const loadAlbums = async () => {
+    setIsLoading(true);
+    const res = await fetchAlbumsAction();
+    if (res.success) {
+      setAlbums(res.data);
+    } else {
+      toast.error('Failed to load albums');
+    }
+    setIsLoading(false);
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') router.push('/');
+    if (status === 'authenticated') loadAlbums();
   }, [status, router]);
 
-  useEffect(() => {
-    if (inView && hasNextPage) fetchNextPage();
-  }, [inView, hasNextPage, fetchNextPage]);
-
-  const handleDeleteSuccess = (id: string) => {
-    queryClient.setQueriesData({ queryKey: ['images', session?.user?.email] }, (oldData: any) => {
-      if (!oldData) return oldData;
-      return {
-        ...oldData,
-        pages: oldData.pages.map((page: any) => ({
-          ...page,
-          data: page.data ? page.data.filter((img: ImageType) => img._id !== id) : []
-        }))
-      };
-    });
-  };
-
-  const changeBackground = async (bgId: string) => {
-    setUser({ ...user, dashboardBackground: bgId });
-    try {
-      await updateDashboardBackgroundAction(bgId);
-    } catch (err) {
-      toast.error('Failed to save preference');
+  const handleAddNewAlbum = async () => {
+    // Optimistically add a placeholder or just call the action
+    const res = await createAlbumAction("Phim & Kỷ niệm");
+    if (res.success) {
+      setAlbums([res.data, ...albums]);
+      toast.success('New Album added');
+    } else {
+      toast.error(res.error || 'Failed to create album');
     }
   };
 
-  if (status === 'loading') {
+  const changeBackground = (bgId: string) => {
+    setUser({ ...user, dashboardBackground: bgId });
+    setShowBgPicker(false);
+    // Ideally call back-end action here too if you want it persistent
+  };
+
+  if (status === 'loading' || (status === 'authenticated' && isLoading)) {
     return (
-      <div className="flex h-[60vh] items-center justify-center">
+      <div className="flex h-[80vh] items-center justify-center">
         <Loader2 className="animate-spin text-indigo-600" size={40} />
       </div>
     );
   }
 
-  const allImages = data?.pages.flatMap((page: any) => page.data || []) || [];
   const activeBg = BACKGROUNDS.find(b => b.id === currentBackground) || BACKGROUNDS[0];
 
   return (
     <div className={`min-h-screen transition-all duration-700 ${activeBg.class} -mt-32 pt-32 px-6 pb-20`}>
       <div className="mx-auto max-w-7xl">
-        {/* Simplified Header */}
+        
+        {/* Header Section */}
         <div className="mb-12 flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between pt-8">
           <div>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-3">
-              Gallery
-              <div className={`h-2.5 w-2.5 rounded-full ${activeBg.dot} shadow-xl shadow-indigo-500/20`} />
+            <h2 className="text-4xl font-black text-slate-900 dark:text-white tracking-tight flex items-center gap-4">
+              My Albums
+              <div className={`h-3 w-3 rounded-full ${activeBg.dot} shadow-xl shadow-indigo-500/50`} />
             </h2>
-            <p className="text-slate-400 font-bold text-[10px] uppercase tracking-[0.2em] mt-1">
-              {allImages.length} Saved Memories
+            <p className="text-slate-400 font-bold text-xs uppercase tracking-[0.2em] mt-2">
+              Managing {albums.length} Private Collections
             </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <div className="relative group flex-1 min-w-[280px]">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
-              <input
-                type="text"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 bg-white/80 backdrop-blur-md dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 rounded-2xl outline-none focus:ring-2 focus:ring-indigo-500/10 focus:border-indigo-500/50 transition-all font-bold"
-              />
+            {/* View Mode Toggle */}
+            <div className="flex bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-1 rounded-2xl border border-slate-100 dark:border-slate-800">
+              <button 
+                onClick={() => setViewMode('grid')}
+                className={`p-2 rounded-xl transition-all ${viewMode === 'grid' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600' : 'text-slate-400'}`}
+              >
+                <LayoutGrid size={20} />
+              </button>
+              <button 
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-white dark:bg-slate-800 shadow-sm text-indigo-600' : 'text-slate-400'}`}
+              >
+                <List size={20} />
+              </button>
             </div>
 
+            {/* Background Picker */}
             <div className="relative">
               <button
                 onClick={() => setShowBgPicker(!showBgPicker)}
-                className="h-12 w-12 flex items-center justify-center rounded-2xl bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 text-slate-400 hover:text-indigo-600 transition-all shadow-sm"
+                className="h-12 w-12 flex items-center justify-center rounded-2xl bg-white/50 border border-slate-200 dark:bg-slate-900/50 dark:border-slate-800 text-slate-400 hover:text-indigo-600 transition-all shadow-sm"
               >
                 <Palette size={20} />
               </button>
@@ -156,10 +126,7 @@ export default function Dashboard() {
                     {BACKGROUNDS.map((bg) => (
                       <button
                         key={bg.id}
-                        onClick={() => {
-                          changeBackground(bg.id);
-                          setShowBgPicker(false);
-                        }}
+                        onClick={() => changeBackground(bg.id)}
                         className={`w-full flex items-center justify-between px-4 py-2.5 text-xs font-black rounded-xl transition-all ${currentBackground === bg.id ? 'bg-indigo-600 text-white shadow-lg' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800'}`}
                       >
                         {bg.name}
@@ -171,65 +138,45 @@ export default function Dashboard() {
               </AnimatePresence>
             </div>
 
-            <UploadButton onSuccess={refetch} />
+            {/* Add New Album Button */}
+            <button
+              onClick={handleAddNewAlbum}
+              className="flex items-center gap-3 rounded-2xl bg-indigo-600 px-8 py-3 text-sm font-black text-white shadow-xl shadow-indigo-500/30 transition-all hover:bg-indigo-700 hover:scale-105 active:scale-95"
+            >
+              <FolderPlus size={20} />
+              <span>Add New Album</span>
+            </button>
           </div>
         </div>
 
-        {/* Content Section */}
-        {queryStatus === 'pending' ? (
-          <div className="flex h-[40vh] items-center justify-center">
-            <Loader2 className="animate-spin text-indigo-600" size={48} />
-          </div>
-        ) : allImages.length > 0 ? (
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <Masonry
-              breakpointCols={{ default: 5, 1200: 4, 900: 3, 700: 2, 500: 2 }}
-              className="my-masonry-grid"
-              columnClassName="my-masonry-grid_column"
-            >
-              {allImages.map((image: ImageType) => (
-                <ImageCard
-                  key={image._id}
-                  image={image}
-                  onDelete={handleDeleteSuccess}
-                  onView={setSelectedImage}
+        {/* Albums List/Grid */}
+        <div className={`grid gap-8 ${viewMode === 'grid' ? 'grid-cols-1 md:grid-cols-2' : 'grid-cols-1'}`}>
+          <AnimatePresence mode="popLayout">
+            {albums.length > 0 ? (
+              albums.map((album) => (
+                <AlbumCard 
+                  key={album._id} 
+                  album={album} 
+                  onUpdate={loadAlbums} 
                 />
-              ))}
-            </Masonry>
-            <div ref={ref} className="h-40 flex items-center justify-center mt-10">
-              {isFetchingNextPage && <Loader2 className="animate-spin text-indigo-600" size={24} />}
-            </div>
-          </motion.div>
-        ) : (
-          <div className="flex h-[50vh] flex-col items-center justify-center rounded-[3rem] border border-slate-200 dark:border-slate-800 bg-white/50 backdrop-blur-sm p-12 text-center">
-            <ImageIcon className="text-slate-300 mb-6" size={64} />
-            <h3 className="text-2xl font-black text-slate-800 dark:text-white tracking-tight">Your gallery is empty</h3>
-            <p className="mt-2 text-slate-500 font-bold text-sm">Start by uploading your first memory today.</p>
-          </div>
-        )}
-      </div>
+              ))
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0 }} 
+                animate={{ opacity: 1 }}
+                className="col-span-full flex flex-col items-center justify-center py-40 bg-white/20 dark:bg-slate-900/20 rounded-[4rem] border-2 border-dashed border-slate-200 dark:border-slate-800"
+              >
+                <div className="bg-indigo-50 dark:bg-indigo-900/10 p-8 rounded-full mb-6">
+                  <FolderPlus size={64} className="text-indigo-400" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-800 dark:text-white uppercase tracking-tighter">No Albums Found</h3>
+                <p className="text-slate-400 font-bold mt-2">Create your first album to organize your memories.</p>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
 
-      {/* Lightbox */}
-      <AnimatePresence>
-        {selectedImage && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-500 flex items-center justify-center bg-slate-950/90 backdrop-blur-xl p-4 sm:p-12"
-            onClick={() => setSelectedImage(null)}
-          >
-            <motion.img
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              src={selectedImage}
-              className="max-h-[90vh] max-w-[95vw] rounded-4xl object-contain shadow-2xl border border-white/10"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </motion.div>
-        )}
-      </AnimatePresence>
+      </div>
     </div>
   );
 }

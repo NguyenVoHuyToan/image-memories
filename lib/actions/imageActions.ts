@@ -3,7 +3,7 @@
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import dbConnect from "@/lib/mongodb";
-import Image from "@/lib/models/Image";
+import Album from "@/lib/models/Album";
 import { uploadStream, deleteImageFromCloudinary } from "@/lib/cloudinary";
 import { revalidatePath } from "next/cache";
 
@@ -20,10 +20,12 @@ export async function uploadImageAction(formData: FormData) {
     if (!session || !session.user) throw new Error("Unauthorized");
 
     const userId = (session.user as any).id;
+    const albumId = formData.get("albumId") as string;
     const file = formData.get("file") as File;
     const title = formData.get("title") as string || "Untitled";
 
     if (!file) throw new Error("No file uploaded");
+    if (!albumId) throw new Error("Album ID is required");
     
     // File validation
     if (file.size > MAX_SIZE) throw new Error("File too large (Max 5MB)");
@@ -32,134 +34,59 @@ export async function uploadImageAction(formData: FormData) {
     const buffer = Buffer.from(await file.arrayBuffer());
     await dbConnect();
 
-    const folder = `memories-app/users/${userId}`;
+    const folder = `memories-app/users/${userId}/albums/${albumId}`;
     
-    // Request AI Tagging (Optional - won't crash if add-on is missing)
-    let aiTags: string[] = [];
     try {
-      const uploadResult = await uploadStream(buffer, folder, {
-        categorization: 'google_tagging',
-        auto_tagging: 0.6
-      });
-
-      // Extract tags from AI response if available
-      if (uploadResult.info?.categorization?.google_tagging?.data) {
-        aiTags = uploadResult.info.categorization.google_tagging.data
-          .map((tagObj: any) => tagObj.tag);
-      }
-
-      const newImage = await Image.create({
-        userId,
-        url: uploadResult.secure_url,
-        cloudinary_id: uploadResult.public_id,
-        title,
-        size: file.size,
-        tags: aiTags
-      });
-
-      revalidatePath("/dashboard");
-      return { success: true, data: JSON.parse(JSON.stringify(newImage)) };
-    } catch (apiError: any) {
-      // If AI Tagging fails (e.g. add-on not enabled), try upload without it
-      console.warn("AI Tagging failed, uploading without tags:", apiError.message);
       const uploadResult = await uploadStream(buffer, folder);
-      
-      const newImage = await Image.create({
-        userId,
+
+      const imageData = {
         url: uploadResult.secure_url,
-        cloudinary_id: uploadResult.public_id,
+        publicId: uploadResult.public_id,
         title,
-        size: file.size,
-        tags: []
-      });
+        createdAt: new Date()
+      };
+
+      const updatedAlbum = await Album.findOneAndUpdate(
+        { _id: albumId, userId },
+        { $push: { images: imageData } },
+        { new: true }
+      );
+
+      if (!updatedAlbum) throw new Error("Album not found or access denied");
 
       revalidatePath("/dashboard");
-      return { success: true, data: JSON.parse(JSON.stringify(newImage)) };
+      return { success: true, data: JSON.parse(JSON.stringify(updatedAlbum)) };
+    } catch (apiError: any) {
+      console.error("Upload error:", apiError.message);
+      throw apiError;
     }
   } catch (error: any) {
     return { success: false, error: error.message };
   }
 }
 
-export async function fetchImagesAction(page: number = 1, limit: number = 12, query: string = "") {
+export async function deleteImageFromAlbumAction(albumId: string, publicId: string) {
   try {
     const session = await getSession();
     if (!session || !session.user) throw new Error("Unauthorized");
 
     const userId = (session.user as any).id;
-    const skip = (page - 1) * limit;
-
     await dbConnect();
 
-    const filter: any = { userId };
-    if (query) {
-      filter.$or = [
-        { title: { $regex: query, $options: 'i' } },
-        { tags: { $in: [new RegExp(query, 'i')] } }
-      ];
-    }
+    // Remove from Cloudinary
+    await deleteImageFromCloudinary(publicId);
 
-    const images = await Image.find(filter)
-      .sort({ createdAt: -1 })
-      .skip(skip)
-      .limit(limit);
-
-    const total = await Image.countDocuments(filter);
-
-    return {
-      success: true,
-      data: JSON.parse(JSON.stringify(images)),
-      hasMore: skip + images.length < total
-    };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-export async function deleteImageAction(id: string) {
-  try {
-    const session = await getSession();
-    if (!session || !session.user) throw new Error("Unauthorized");
-
-    const userId = (session.user as any).id;
-
-    await dbConnect();
-    const image = await Image.findById(id);
-
-    if (!image || image.userId.toString() !== userId) {
-      throw new Error("Forbidden or not found");
-    }
-
-    if (image.cloudinary_id) {
-      await deleteImageFromCloudinary(image.cloudinary_id);
-    }
-
-    await Image.findByIdAndDelete(id);
-    revalidatePath("/dashboard");
-    return { success: true };
-  } catch (error: any) {
-    return { success: false, error: error.message };
-  }
-}
-
-export async function updateImageAction(id: string, data: { title?: string, tags?: string[] }) {
-  try {
-    const session = await getSession();
-    if (!session || !session.user) throw new Error("Unauthorized");
-
-    const userId = (session.user as any).id;
-
-    await dbConnect();
-    const image = await Image.findOneAndUpdate(
-      { _id: id, userId },
-      { $set: data },
+    // Remove from Album document
+    const album = await Album.findOneAndUpdate(
+      { _id: albumId, userId },
+      { $pull: { images: { publicId } } },
       { new: true }
     );
 
-    if (!image) throw new Error("Image not found");
+    if (!album) throw new Error("Album not found");
 
     revalidatePath("/dashboard");
-    return { success: true, data: JSON.parse(JSON.stringify(image)) };
+    return { success: true, data: JSON.parse(JSON.stringify(album)) };
   } catch (error: any) {
     return { success: false, error: error.message };
   }
