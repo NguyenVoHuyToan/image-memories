@@ -227,48 +227,44 @@ function AlbumCard({ album, onUpdate }: AlbumCardProps) {
         </div>
       </motion.article>
 
-      {/* Lightbox Preview Modal - Mobile Optimized with Dynamic Viewport Height */}
+      {/* Lightbox Preview Modal - Improved with Click-Anywhere-to-Close */}
       <AnimatePresence>
         {selectedImageUrl && (
           <div 
-            className="fixed inset-0 z-300 flex items-center justify-center p-2 sm:p-10 h-dvh w-full"
+            className="fixed inset-0 z-300 flex items-center justify-center p-2 sm:p-4 h-dvh w-full cursor-zoom-out"
             role="dialog"
             aria-modal="true"
             aria-label="Full screen image preview"
+            onClick={() => setSelectedImageUrl(null)} // Close when clicking anywhere
           >
-            {/* Background Backdrop with Blur */}
+            {/* Background Backdrop */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              onClick={() => setSelectedImageUrl(null)}
-              className="absolute inset-0 bg-slate-950/95 backdrop-blur-3xl cursor-zoom-out"
+              className="absolute inset-0 bg-slate-950/95 backdrop-blur-3xl"
             />
             
-            {/* Image Container - Using dynamic viewport to handle mobile address bars */}
+            {/* Image Container */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              transition={{ type: "spring", damping: 25, stiffness: 300 }}
-              className="relative w-full h-full max-w-7xl max-h-[92dvh] sm:max-h-[85vh] rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl z-10 flex items-center justify-center"
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              transition={{ type: "spring", damping: 30, stiffness: 400 }}
+              className="relative w-full h-full max-w-7xl max-h-[94dvh] z-10 flex items-center justify-center"
             >
               <Image
                 src={selectedImageUrl}
                 alt="Full sized preview"
                 fill
                 priority
-                className="object-contain" // Keeps image within container without distortion
+                className="object-contain drop-shadow-2xl"
               />
               
-              {/* Floating Close Button for Mobile */}
-              <button
-                onClick={() => setSelectedImageUrl(null)}
-                aria-label="Close Preview"
-                className="absolute top-6 right-6 p-4 sm:p-3 bg-white/10 hover:bg-rose-500 backdrop-blur-2xl text-white rounded-full transition-all active:scale-90 shadow-2xl border border-white/10 z-50"
-              >
-                <X size={28} className="sm:w-6 sm:h-6" />
-              </button>
+              {/* Subtle Close Indicator */}
+              <div className="absolute top-6 right-6 p-3 bg-white/5 backdrop-blur-md text-white/50 rounded-full border border-white/10 pointer-events-none">
+                <X size={24} />
+              </div>
             </motion.div>
           </div>
         )}
