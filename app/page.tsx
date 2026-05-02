@@ -23,39 +23,39 @@ export default async function Home() {
       </div>
 
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-150 py-6">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/40 dark:border-slate-800 rounded-[2.5rem] px-8 h-20 flex justify-between items-center shadow-2xl shadow-indigo-500/5">
-            <Link href="/" className="group">
-              <div className="flex items-center gap-3">
-                <div className="bg-linear-to-br from-indigo-600 to-violet-600 p-2 rounded-2xl shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform">
-                  <Camera className="text-white" size={24} />
+      <nav className="fixed top-0 w-full z-150 py-4 sm:py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6">
+          <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/40 dark:border-slate-800 rounded-3xl sm:rounded-[2.5rem] px-4 sm:px-8 h-16 sm:h-20 flex justify-between items-center shadow-2xl shadow-indigo-500/5">
+            <Link href="/" className="group shrink-0">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="bg-linear-to-br from-indigo-600 to-violet-600 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform">
+                  <Camera className="text-white h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
-                <span className="text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
+                <span className="text-lg sm:text-2xl font-black tracking-tighter text-slate-900 dark:text-white">
                   Memories
                 </span>
               </div>
             </Link>
 
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-3 sm:gap-6">
               {session ? (
                 <Link
                   href="/dashboard"
-                  className="text-sm font-black bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 active:scale-95 transition-all py-3 px-8 rounded-2xl shadow-xl flex items-center gap-2"
+                  className="text-xs sm:text-sm font-black bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 active:scale-95 transition-all py-2 sm:py-3 px-4 sm:px-8 rounded-xl sm:rounded-2xl shadow-xl flex items-center gap-1 sm:gap-2"
                 >
-                  Dashboard <ArrowRight size={18} />
+                  Dashboard <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </Link>
               ) : (
                 <>
                   <Link
                     href="/login"
-                    className="text-sm font-black text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
+                    className="hidden xs:block text-xs sm:text-sm font-black text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
                   >
                     Log in
                   </Link>
                   <Link
                     href="/register"
-                    className="text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all py-3 px-8 rounded-2xl shadow-xl shadow-indigo-500/20"
+                    className="text-xs sm:text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all py-2 sm:py-3 px-4 sm:px-8 rounded-xl sm:rounded-2xl shadow-xl shadow-indigo-500/20 whitespace-nowrap"
                   >
                     Get Started
                   </Link>
