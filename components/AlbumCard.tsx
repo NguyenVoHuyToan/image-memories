@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
+import { useState, memo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Trash2, Edit3, Check, X, ImageIcon, Plus } from "lucide-react";
 import { updateAlbumNameAction, deleteAlbumAction } from "@/lib/actions/albumActions";
 import { deleteImageFromAlbumAction } from "@/lib/actions/imageActions";
 import UploadButton from "@/components/UploadButton";
 import { toast } from "sonner";
+import Image from "next/image"; // Sử dụng Next.js Image Component
 
-interface Image {
+interface ImageData {
   url: string;
   publicId: string;
   title: string;
@@ -17,7 +18,7 @@ interface Image {
 interface Album {
   _id: string;
   name: string;
-  images: Image[];
+  images: ImageData[];
 }
 
 interface AlbumCardProps {
@@ -25,17 +26,35 @@ interface AlbumCardProps {
   onUpdate: () => void;
 }
 
-export default function AlbumCard({ album, onUpdate }: AlbumCardProps) {
+// Bọc Component trong React.memo để tránh re-render khi props không đổi
+function AlbumCard({ album, onUpdate }: AlbumCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(album.name);
+  const [debouncedName, setDebouncedName] = useState(album.name);
+  
+  // Local state for optimistic UI updates
+  const [localImages, setLocalImages] = useState(album.images);
 
-  const handleUpdateName = async () => {
-    if (!name.trim() || name === album.name) {
+  // Sync with props when background refresh happens
+  useEffect(() => {
+    setLocalImages(album.images);
+  }, [album.images]);
+
+  // Logic Debounce cho Input tên Album
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedName(name);
+    }, 300);
+    return () => clearTimeout(handler);
+  }, [name]);
+
+  const handleUpdateName = useCallback(async () => {
+    if (!debouncedName.trim() || debouncedName === album.name) {
       setIsEditing(false);
       return;
     }
 
-    const res = await updateAlbumNameAction(album._id, name);
+    const res = await updateAlbumNameAction(album._id, debouncedName);
     if (res.success) {
       toast.success("Album name updated");
       setIsEditing(false);
@@ -43,9 +62,9 @@ export default function AlbumCard({ album, onUpdate }: AlbumCardProps) {
     } else {
       toast.error(res.error || "Failed to update name");
     }
-  };
+  }, [debouncedName, album._id, album.name, onUpdate]);
 
-  const handleDeleteAlbum = async () => {
+  const handleDeleteAlbum = useCallback(async () => {
     if (!confirm("Are you sure you want to delete this album and all its images?")) return;
     
     const res = await deleteAlbumAction(album._id);
@@ -55,27 +74,39 @@ export default function AlbumCard({ album, onUpdate }: AlbumCardProps) {
     } else {
       toast.error(res.error || "Failed to delete album");
     }
-  };
+  }, [album._id, onUpdate]);
 
-  const handleDeleteImage = async (publicId: string) => {
+  const handleDeleteImage = useCallback(async (publicId: string) => {
     if (!confirm("Delete this image?")) return;
     
+    // Store current state for potential rollback
+    const previousImages = localImages;
+    
+    // 1. Instant UI update (Optimistic)
+    setLocalImages(prev => prev.filter(img => img.publicId !== publicId));
+    
+    // 2. Perform server action in background
     const res = await deleteImageFromAlbumAction(album._id, publicId);
+    
     if (res.success) {
       toast.success("Image deleted");
-      onUpdate();
+      // Silently sync with server-side state
+      onUpdate(); 
     } else {
+      // 3. Rollback on failure
+      setLocalImages(previousImages);
       toast.error(res.error || "Failed to delete image");
     }
-  };
+  }, [album._id, onUpdate, localImages]);
 
   return (
     <motion.div
       id={`album-${album._id}`}
       layout
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="group relative flex flex-col gap-4 rounded-[2.5rem] bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl p-5 sm:p-8 border border-white/50 dark:border-slate-800 shadow-2xl shadow-indigo-500/5 scroll-mt-32"
+      transition={{ duration: 0.3 }}
+      className="group relative flex flex-col gap-4 rounded-[2.5rem] bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl p-5 sm:p-8 border border-white/50 dark:border-slate-800 shadow-2xl shadow-indigo-500/5 scroll-mt-48"
     >
       {/* Header */}
       <div className="flex items-center justify-between gap-4 mb-2">
@@ -109,7 +140,7 @@ export default function AlbumCard({ album, onUpdate }: AlbumCardProps) {
           )}
           <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
             <span className="w-1 h-1 rounded-full bg-indigo-400 animate-pulse" />
-            {album.images.length} Memorable Moments
+            {localImages.length} Memories
           </p>
         </div>
 
@@ -124,25 +155,31 @@ export default function AlbumCard({ album, onUpdate }: AlbumCardProps) {
         </div>
       </div>
 
-      {/* Internal Scrollable Grid */}
-      <div className="relative">
-        <div className="max-h-[480px] overflow-y-auto pr-2 no-scrollbar custom-scrollbar transition-all duration-300">
+      {/* Optimized Internal Scrollable Grid */}
+      <div className="relative overflow-hidden">
+        <div 
+          className="max-h-[480px] overflow-y-auto pr-2 custom-scrollbar transition-all duration-300 transform-gpu"
+          style={{ willChange: "scroll-position", contain: "content" }}
+        >
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 pb-6">
-            {album.images.length > 0 ? (
-              album.images.map((img) => (
+            {localImages.length > 0 ? (
+              localImages.map((img, idx) => (
                 <motion.div
                   key={img.publicId}
-                  layout
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  className="group/img relative aspect-square rounded-[1.5rem] overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 shadow-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: idx * 0.05 }}
+                  className="group/img relative aspect-square rounded-[1.5rem] overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
                 >
-                  <img
+                  <Image
                     src={img.url}
                     alt={img.title}
-                    className="h-full w-full object-cover transition-transform duration-700 group-hover/img:scale-110"
+                    fill
+                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                    loading="lazy"
+                    className="object-cover transition-transform duration-700 group-hover/img:scale-110"
                   />
-                  <div className="absolute inset-0 bg-slate-950/60 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center backdrop-blur-[2px]">
+                  <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center backdrop-blur-[1px] z-10">
                     <button 
                       onClick={() => handleDeleteImage(img.publicId)}
                       className="p-3 bg-white/20 backdrop-blur-xl text-white rounded-2xl hover:bg-rose-500 transition-all active:scale-90"
@@ -161,11 +198,12 @@ export default function AlbumCard({ album, onUpdate }: AlbumCardProps) {
           </div>
         </div>
         
-        {/* Shadow Fade Effect - Chỉ hiện khi có nhiều ảnh */}
-        {album.images.length > 10 && (
-          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/90 dark:from-slate-900/90 to-transparent pointer-events-none rounded-b-[2rem]" />
+        {localImages.length > 10 && (
+          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/90 dark:from-slate-900/90 to-transparent pointer-events-none rounded-b-[2rem] z-20" />
         )}
       </div>
     </motion.div>
   );
 }
+
+export default memo(AlbumCard);

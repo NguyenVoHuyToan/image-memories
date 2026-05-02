@@ -1,17 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { Camera, LogOut, User as UserIcon, Settings, ChevronDown } from 'lucide-react';
-import { signOut } from 'next-auth/react';
-import ProfileModal from './ProfileModal';
-import { useUser } from '@/context/UserContext';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useState, useCallback, memo } from "react";
+import Link from "next/link";
+import { Camera, LogOut, User as UserIcon, Settings, ChevronDown } from "lucide-react";
+import { signOut } from "next-auth/react";
+import ProfileModal from "./ProfileModal";
+import { useUser } from "@/context/UserContext";
+import { motion, AnimatePresence } from "framer-motion";
+import Image from "next/image";
 
-export default function DashboardNav() {
+function DashboardNav() {
   const { user } = useUser();
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [showDropdown, setShowDropdown] = useState(false);
+
+  // Memoize handlers
+  const toggleDropdown = useCallback(() => setShowDropdown(prev => !prev), []);
+  const closeDropdown = useCallback(() => setShowDropdown(false), []);
+  const openProfile = useCallback(() => {
+    setIsProfileOpen(true);
+    closeDropdown();
+  }, [closeDropdown]);
+  const handleLogout = useCallback(() => signOut({ callbackUrl: "/" }), []);
 
   return (
     <>
@@ -42,12 +52,18 @@ export default function DashboardNav() {
           <div className="flex items-center gap-3 pr-2">
             <div className="relative">
               <button
-                onClick={() => setShowDropdown(!showDropdown)}
+                onClick={toggleDropdown}
                 className="flex items-center gap-3 pl-2 pr-4 py-2 rounded-2xl bg-slate-50 border border-slate-100 hover:border-indigo-200 transition-all dark:bg-slate-800 dark:border-slate-700 group focus:ring-2 focus:ring-indigo-500/10"
               >
-                <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+                <div className="h-10 w-10 rounded-xl bg-white dark:bg-slate-900 flex items-center justify-center text-slate-400 overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 relative">
                   {user?.avatar ? (
-                    <img src={user.avatar} alt="Avatar" className="h-full w-full object-cover" />
+                    <Image 
+                      src={user.avatar} 
+                      alt="Avatar" 
+                      fill 
+                      className="object-cover"
+                      sizes="40px"
+                    />
                   ) : (
                     <UserIcon size={20} />
                   )}
@@ -60,13 +76,13 @@ export default function DashboardNav() {
                     Member
                   </p>
                 </div>
-                <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${showDropdown ? 'rotate-180' : ''}`} />
+                <ChevronDown size={14} className={`text-slate-400 transition-transform duration-300 ${showDropdown ? "rotate-180" : ""}`} />
               </button>
 
               <AnimatePresence>
                 {showDropdown && (
                   <>
-                    <div className="fixed inset-0 z-40" onClick={() => setShowDropdown(false)} />
+                    <div className="fixed inset-0 z-40" onClick={closeDropdown} />
                     <motion.div
                       initial={{ opacity: 0, scale: 0.95, y: 10 }}
                       animate={{ opacity: 1, scale: 1, y: 0 }}
@@ -74,7 +90,7 @@ export default function DashboardNav() {
                       className="absolute right-0 mt-3 p-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl shadow-2xl z-50 min-w-[200px] overflow-hidden"
                     >
                       <button
-                        onClick={() => { setIsProfileOpen(true); setShowDropdown(false); }}
+                        onClick={openProfile}
                         className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-2xl transition-all text-left"
                       >
                         <Settings size={18} />
@@ -82,7 +98,7 @@ export default function DashboardNav() {
                       </button>
                       <div className="h-px bg-slate-100 dark:bg-slate-800 my-1 mx-2" />
                       <button
-                        onClick={() => signOut({ callbackUrl: '/' })}
+                        onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-3 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all text-left"
                       >
                         <LogOut size={18} />
@@ -105,3 +121,5 @@ export default function DashboardNav() {
     </>
   );
 }
+
+export default memo(DashboardNav);

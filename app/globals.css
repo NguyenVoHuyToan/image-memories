@@ -64,6 +64,11 @@ body {
 }
 
 /* Custom Scrollbar for INTERNAL Album Scroll */
+.custom-scrollbar {
+  will-change: scroll-position;
+  contain: paint;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
   width: 5px;
 }

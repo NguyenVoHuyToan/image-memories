@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, FolderPlus, Palette, Check, LayoutGrid, List, ArrowUp, Plus } from "lucide-react";
 import { useSession } from "next-auth/react";
@@ -30,10 +30,13 @@ export default function Dashboard() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const [showBackToTop, setShowBackToTop] = useState(false);
 
-  const currentBackground = user?.dashboardBackground || "default";
+  const currentBackground = useMemo(() => user?.dashboardBackground || "default", [user?.dashboardBackground]);
 
-  const loadAlbums = async () => {
-    setIsLoading(true);
+  // Memoirze loadAlbums to prevent dependency changes in useEffect
+  const loadAlbums = useCallback(async () => {
+    // Only show global loading on initial fetch to prevent flickering
+    if (albums.length === 0) setIsLoading(true);
+    
     const res = await fetchAlbumsAction();
     if (res.success) {
       setAlbums(res.data);
@@ -41,30 +44,32 @@ export default function Dashboard() {
       toast.error("Failed to load albums");
     }
     setIsLoading(false);
-  };
+  }, [albums.length]);
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/");
     if (status === "authenticated") loadAlbums();
-  }, [status, router]);
+  }, [status, router, loadAlbums]);
 
   useEffect(() => {
     const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 400);
+      // High performance scroll check
+      if (window.scrollY > 400 && !showBackToTop) setShowBackToTop(true);
+      else if (window.scrollY <= 400 && showBackToTop) setShowBackToTop(false);
     };
-    window.addEventListener("scroll", handleScroll);
+    window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [showBackToTop]);
 
-  const handleAddNewAlbum = async () => {
+  const handleAddNewAlbum = useCallback(async () => {
     const res = await createAlbumAction("Phim & Kỷ niệm");
     if (res.success) {
-      setAlbums([res.data, ...albums]);
+      setAlbums(prev => [res.data, ...prev]);
       toast.success("New Album added");
     } else {
       toast.error(res.error || "Failed to create album");
     }
-  };
+  }, []);
 
   const scrollToAlbum = useCallback((albumId: string) => {
     const element = document.getElementById(`album-${albumId}`);
@@ -73,10 +78,16 @@ export default function Dashboard() {
     }
   }, []);
 
-  const changeBackground = (bgId: string) => {
+  const changeBackground = useCallback((bgId: string) => {
     setUser({ ...user, dashboardBackground: bgId });
     setShowBgPicker(false);
-  };
+  }, [user, setUser]);
+
+  // Memoize active background object
+  const activeBg = useMemo(() => 
+    BACKGROUNDS.find(b => b.id === currentBackground) || BACKGROUNDS[0],
+    [currentBackground]
+  );
 
   if (status === "loading" || (status === "authenticated" && isLoading)) {
     return (
@@ -85,8 +96,6 @@ export default function Dashboard() {
       </div>
     );
   }
-
-  const activeBg = BACKGROUNDS.find(b => b.id === currentBackground) || BACKGROUNDS[0];
 
   return (
     <div className={`min-h-screen transition-all duration-700 ${activeBg.class} -mt-32 pt-36 sm:pt-48 px-4 sm:px-6 pb-20 scroll-smooth`}>
@@ -98,7 +107,7 @@ export default function Dashboard() {
           onAddAlbum={handleAddNewAlbum}
         />
 
-        {/* Condensed Header Section */}
+        {/* Header Section */}
         <div className="mb-8 sm:mb-12 flex flex-col gap-4 sm:gap-6 lg:flex-row lg:items-center lg:justify-between">
           <motion.div initial={{ x: -20, opacity: 0 }} animate={{ x: 0, opacity: 1 }} className="flex items-center justify-between lg:block">
             <div>
@@ -111,7 +120,6 @@ export default function Dashboard() {
               </p>
             </div>
             
-            {/* FAB replacement for mobile in header */}
             <button
                onClick={handleAddNewAlbum}
                className="lg:hidden h-10 w-10 flex items-center justify-center rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 shadow-lg active:scale-90 transition-transform"
@@ -121,7 +129,6 @@ export default function Dashboard() {
           </motion.div>
 
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* View Mode Toggle */}
             <div className="flex bg-white/50 dark:bg-slate-900/50 backdrop-blur-md p-1 rounded-xl sm:rounded-2xl border border-slate-100 dark:border-slate-800">
               <button 
                 onClick={() => setViewMode("grid")}
@@ -137,7 +144,6 @@ export default function Dashboard() {
               </button>
             </div>
 
-            {/* Background Picker */}
             <div className="relative">
               <button
                 onClick={() => setShowBgPicker(!showBgPicker)}
@@ -169,7 +175,6 @@ export default function Dashboard() {
               </AnimatePresence>
             </div>
 
-            {/* Hidden on mobile, use FAB or Plus icon above */}
             <button
               onClick={handleAddNewAlbum}
               className="hidden lg:flex items-center gap-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8 py-3 text-sm font-black shadow-xl shadow-indigo-500/10 transition-all hover:scale-105 active:scale-95 uppercase tracking-widest"
@@ -180,8 +185,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Albums List/Grid */}
-        <div className={`grid gap-6 sm:gap-12 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
+        {/* Albums List/Grid with high-performance rendering */}
+        <div 
+          className={`grid gap-6 sm:gap-12 ${viewMode === "grid" ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}
+          style={{ contain: "content" }}
+        >
           <AnimatePresence mode="popLayout">
             {albums.length > 0 ? (
               albums.map((album) => (
