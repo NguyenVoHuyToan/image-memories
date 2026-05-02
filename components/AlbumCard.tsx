@@ -38,19 +38,22 @@ function getOptimizedUrl(url: string, width = 800) {
 }
 
 async function downloadImage(url: string, filename: string) {
-  try {
-    const res = await fetch(url, { mode: "cors" });
-    const blob = await res.blob();
-    const blobUrl = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = filename || "memory.jpg";
-    a.click();
-    URL.revokeObjectURL(blobUrl);
-  } catch {
-    // Fallback: open in new tab for manual save
-    window.open(url, "_blank");
-  }
+  // Use Cloudinary's 'fl_attachment' flag to force a browser download dialog.
+  // This is much more reliable on mobile than fetch/blob approaches.
+  const downloadUrl = url.includes("cloudinary.com")
+    ? url.replace("/upload/", "/upload/fl_attachment/")
+    : url;
+
+  toast.info("Đang bắt đầu tải ảnh xuống...");
+  
+  const a = document.createElement("a");
+  a.href = downloadUrl;
+  a.setAttribute("download", filename || "memory.jpg");
+  // Some mobile browsers need target="_blank" to trigger the download manager
+  a.setAttribute("target", "_blank"); 
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
 }
 
 async function shareImage(url: string, title: string) {
