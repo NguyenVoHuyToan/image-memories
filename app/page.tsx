@@ -26,7 +26,11 @@ export default async function Home() {
       <header className="fixed top-0 w-full z-150 py-4 sm:py-6">
         <nav className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-2xl border border-white/40 dark:border-slate-800 rounded-3xl sm:rounded-[2.5rem] px-4 sm:px-8 h-16 sm:h-20 flex justify-between items-center shadow-2xl shadow-indigo-500/5">
-            <Link href="/" className="group shrink-0" aria-label="Memories Home">
+            <Link
+              href="/"
+              className="group shrink-0"
+              aria-label="Memories Home"
+            >
               <div className="flex items-center gap-2 sm:gap-3">
                 <div className="bg-linear-to-br from-indigo-600 to-violet-600 p-1.5 sm:p-2 rounded-xl sm:rounded-2xl shadow-xl shadow-indigo-500/20 group-hover:scale-110 transition-transform">
                   <Camera className="text-white h-5 w-5 sm:h-6 sm:w-6" />
@@ -43,7 +47,8 @@ export default async function Home() {
                   href="/dashboard"
                   className="text-xs sm:text-sm font-black bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 active:scale-95 transition-all py-2 sm:py-3 px-4 sm:px-8 rounded-xl sm:rounded-2xl shadow-xl flex items-center gap-1 sm:gap-2"
                 >
-                  Dashboard <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px]" />
+                  Dashboard{" "}
+                  <ArrowRight size={16} className="sm:w-[18px] sm:h-[18px]" />
                 </Link>
               ) : (
                 <>
@@ -57,7 +62,7 @@ export default async function Home() {
                     href="/register"
                     className="text-[10px] sm:text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all py-2.5 sm:py-3 px-4 sm:px-8 rounded-xl sm:rounded-2xl shadow-xl shadow-indigo-500/20 whitespace-nowrap uppercase tracking-widest"
                   >
-                    Bắt đầu
+                    Đăng Ký
                   </Link>
                 </>
               )}
@@ -76,7 +81,7 @@ export default async function Home() {
             </div>
 
             <h1 className="text-5xl lg:text-8xl font-black tracking-tight mb-10 leading-[1.1] text-slate-900 dark:text-white">
-              Nơi bảo tồn từng <br />
+              Nơi lưu trữ từng <br />
               <span className="text-transparent bg-clip-text bg-linear-to-r from-indigo-600 via-violet-600 to-fuchsia-600">
                 khoảnh khắc
               </span>{" "}
@@ -85,14 +90,18 @@ export default async function Home() {
             </h1>
 
             <p className="text-xl lg:text-2xl text-slate-500 dark:text-slate-400 mb-14 max-w-2xl mx-auto leading-relaxed font-bold tracking-tight">
-              An toàn. Tinh tế. Và hoàn toàn miễn phí. Trải nghiệm kỉ nguyên mới của việc lưu trữ hình ảnh trực tuyến.
+              An toàn. Tinh tế. Và hoàn toàn miễn phí. Trải nghiệm kỉ nguyên mới
+              của việc lưu trữ hình ảnh trực tuyến.
             </p>
 
             {/* CTA removed from center per user request */}
           </div>
 
           {/* Feature Grid Section */}
-          <section className="grid md:grid-cols-3 gap-8 mt-20" aria-label="Tính năng chính">
+          <section
+            className="grid md:grid-cols-3 gap-8 mt-20"
+            aria-label="Tính năng chính"
+          >
             {[
               {
                 icon: Shield,
@@ -147,9 +156,15 @@ export default async function Home() {
           </div>
 
           <div className="flex gap-10 text-sm font-black text-slate-400 uppercase tracking-widest">
-            <Link href="#" className="hover:text-indigo-600 transition-colors">Privacy</Link>
-            <Link href="#" className="hover:text-indigo-600 transition-colors">Terms</Link>
-            <Link href="#" className="hover:text-indigo-600 transition-colors">Contact</Link>
+            <Link href="#" className="hover:text-indigo-600 transition-colors">
+              Privacy
+            </Link>
+            <Link href="#" className="hover:text-indigo-600 transition-colors">
+              Terms
+            </Link>
+            <Link href="#" className="hover:text-indigo-600 transition-colors">
+              Contact
+            </Link>
           </div>
 
           <div className="flex items-center gap-6">
