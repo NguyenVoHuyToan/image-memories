@@ -89,6 +89,18 @@ function AlbumCard({ album, onUpdate }: AlbumCardProps) {
     }
   }, [album._id, onUpdate, localImages]);
 
+  // Lock body scroll when Lightbox is open to prevent mobile "ghost scrolling"
+  useEffect(() => {
+    if (selectedImageUrl) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "unset";
+    }
+    return () => {
+      document.body.style.overflow = "unset";
+    };
+  }, [selectedImageUrl]);
+
   return (
     <>
       <motion.article
@@ -215,43 +227,47 @@ function AlbumCard({ album, onUpdate }: AlbumCardProps) {
         </div>
       </motion.article>
 
-      {/* Lightbox Preview Modal - SEO Friendly with proper roles */}
+      {/* Lightbox Preview Modal - Mobile Optimized with Dynamic Viewport Height */}
       <AnimatePresence>
         {selectedImageUrl && (
           <div 
-            className="fixed inset-0 z-300 flex items-center justify-center p-4 sm:p-10"
+            className="fixed inset-0 z-300 flex items-center justify-center p-2 sm:p-10 h-dvh w-full"
             role="dialog"
             aria-modal="true"
             aria-label="Full screen image preview"
           >
+            {/* Background Backdrop with Blur */}
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setSelectedImageUrl(null)}
-              className="absolute inset-0 bg-slate-950/90 backdrop-blur-2xl cursor-zoom-out"
+              className="absolute inset-0 bg-slate-950/95 backdrop-blur-3xl cursor-zoom-out"
             />
             
+            {/* Image Container - Using dynamic viewport to handle mobile address bars */}
             <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full h-full max-w-6xl max-h-[85vh] rounded-[2rem] overflow-hidden shadow-2xl z-10 bg-black/20"
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full h-full max-w-7xl max-h-[92dvh] sm:max-h-[85vh] rounded-3xl sm:rounded-[2.5rem] overflow-hidden shadow-2xl z-10 flex items-center justify-center"
             >
               <Image
                 src={selectedImageUrl}
-                alt="Full preview content"
+                alt="Full sized preview"
                 fill
                 priority
-                className="object-contain"
+                className="object-contain" // Keeps image within container without distortion
               />
               
+              {/* Floating Close Button for Mobile */}
               <button
                 onClick={() => setSelectedImageUrl(null)}
                 aria-label="Close Preview"
-                className="absolute top-4 right-4 sm:top-8 sm:right-8 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white rounded-full transition-all active:scale-95 shadow-2xl border border-white/10"
+                className="absolute top-6 right-6 p-4 sm:p-3 bg-white/10 hover:bg-rose-500 backdrop-blur-2xl text-white rounded-full transition-all active:scale-90 shadow-2xl border border-white/10 z-50"
               >
-                <X size={24} />
+                <X size={28} className="sm:w-6 sm:h-6" />
               </button>
             </motion.div>
           </div>

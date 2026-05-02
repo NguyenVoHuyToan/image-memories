@@ -37,7 +37,7 @@ export default async function Home() {
               </div>
             </Link>
 
-            <div className="flex items-center gap-3 sm:gap-6">
+            <div className="flex items-center gap-4 sm:gap-6">
               {session ? (
                 <Link
                   href="/dashboard"
@@ -49,15 +49,15 @@ export default async function Home() {
                 <>
                   <Link
                     href="/login"
-                    className="hidden xs:block text-xs sm:text-sm font-black text-slate-600 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors"
+                    className="text-[10px] sm:text-sm font-black text-slate-500 dark:text-slate-400 hover:text-indigo-600 dark:hover:text-white transition-colors uppercase tracking-widest sm:tracking-normal sm:capitalize"
                   >
                     Đăng nhập
                   </Link>
                   <Link
                     href="/register"
-                    className="text-xs sm:text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all py-2 sm:py-3 px-4 sm:px-8 rounded-xl sm:rounded-2xl shadow-xl shadow-indigo-500/20 whitespace-nowrap"
+                    className="text-[10px] sm:text-sm font-black bg-indigo-600 text-white hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all py-2.5 sm:py-3 px-4 sm:px-8 rounded-xl sm:rounded-2xl shadow-xl shadow-indigo-500/20 whitespace-nowrap uppercase tracking-widest"
                   >
-                    Bắt đầu miễn phí
+                    Bắt đầu
                   </Link>
                 </>
               )}
@@ -88,19 +88,7 @@ export default async function Home() {
               An toàn. Tinh tế. Và hoàn toàn miễn phí. Trải nghiệm kỉ nguyên mới của việc lưu trữ hình ảnh trực tuyến.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-6 items-center">
-              <Link
-                href={session ? "/dashboard" : "/register"}
-                className="group relative bg-slate-900 dark:bg-white text-white dark:text-slate-900 h-20 px-12 rounded-[2rem] flex items-center justify-center gap-4 hover:scale-105 transition-all shadow-2xl shadow-indigo-500/10"
-              >
-                <span className="text-xl font-black uppercase tracking-widest">
-                  {session ? "Truy cập Memories" : "Bắt đầu ngay"}
-                </span>
-                <div className="h-10 w-10 bg-indigo-600 rounded-full flex items-center justify-center text-white group-hover:translate-x-2 transition-transform">
-                  <ArrowRight size={24} />
-                </div>
-              </Link>
-            </div>
+            {/* CTA removed from center per user request */}
           </div>
 
           {/* Feature Grid Section */}
