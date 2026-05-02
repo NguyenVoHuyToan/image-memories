@@ -2,12 +2,12 @@
 
 import { useState, memo, useCallback, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Trash2, Edit3, Check, X, ImageIcon, Plus } from "lucide-react";
+import { Trash2, Edit3, Check, X, ImageIcon, Plus, ZoomIn, Maximize2 } from "lucide-react";
 import { updateAlbumNameAction, deleteAlbumAction } from "@/lib/actions/albumActions";
 import { deleteImageFromAlbumAction } from "@/lib/actions/imageActions";
 import UploadButton from "@/components/UploadButton";
 import { toast } from "sonner";
-import Image from "next/image"; // Sử dụng Next.js Image Component
+import Image from "next/image";
 
 interface ImageData {
   url: string;
@@ -26,21 +26,17 @@ interface AlbumCardProps {
   onUpdate: () => void;
 }
 
-// Bọc Component trong React.memo để tránh re-render khi props không đổi
 function AlbumCard({ album, onUpdate }: AlbumCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [name, setName] = useState(album.name);
   const [debouncedName, setDebouncedName] = useState(album.name);
-  
-  // Local state for optimistic UI updates
   const [localImages, setLocalImages] = useState(album.images);
+  const [selectedImageUrl, setSelectedImageUrl] = useState<string | null>(null);
 
-  // Sync with props when background refresh happens
   useEffect(() => {
     setLocalImages(album.images);
   }, [album.images]);
 
-  // Logic Debounce cho Input tên Album
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedName(name);
@@ -79,130 +75,180 @@ function AlbumCard({ album, onUpdate }: AlbumCardProps) {
   const handleDeleteImage = useCallback(async (publicId: string) => {
     if (!confirm("Delete this image?")) return;
     
-    // Store current state for potential rollback
     const previousImages = localImages;
-    
-    // 1. Instant UI update (Optimistic)
     setLocalImages(prev => prev.filter(img => img.publicId !== publicId));
     
-    // 2. Perform server action in background
     const res = await deleteImageFromAlbumAction(album._id, publicId);
     
     if (res.success) {
       toast.success("Image deleted");
-      // Silently sync with server-side state
       onUpdate(); 
     } else {
-      // 3. Rollback on failure
       setLocalImages(previousImages);
       toast.error(res.error || "Failed to delete image");
     }
   }, [album._id, onUpdate, localImages]);
 
   return (
-    <motion.div
-      id={`album-${album._id}`}
-      layout
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
-      className="group relative flex flex-col gap-4 rounded-[2.5rem] bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl p-5 sm:p-8 border border-white/50 dark:border-slate-800 shadow-2xl shadow-indigo-500/5 scroll-mt-48"
-    >
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 mb-2">
-        <div className="flex-1 min-w-0">
-          {isEditing ? (
-            <div className="flex items-center gap-2 w-full">
-              <input
-                autoFocus
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleUpdateName()}
-                className="flex-1 min-w-0 bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-2xl border-2 border-indigo-500 outline-none font-bold text-slate-900 dark:text-white shadow-inner"
-              />
-              <div className="flex gap-1 shrink-0">
-                <button onClick={handleUpdateName} className="p-2 text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
-                  <Check size={20} />
-                </button>
-                <button onClick={() => { setName(album.name); setIsEditing(false); }} className="p-2 text-rose-500 bg-rose-50 dark:bg-rose-900/20 rounded-xl">
-                  <X size={20} />
-                </button>
+    <>
+      <motion.div
+        id={`album-${album._id}`}
+        layout
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="group relative flex flex-col gap-4 rounded-[2.5rem] bg-white/70 dark:bg-slate-900/70 backdrop-blur-3xl p-5 sm:p-8 border border-white/50 dark:border-slate-800 shadow-2xl shadow-indigo-500/5 scroll-mt-48"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between gap-4 mb-2">
+          <div className="flex-1 min-w-0">
+            {isEditing ? (
+              <div className="flex items-center gap-2 w-full">
+                <input
+                  autoFocus
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleUpdateName()}
+                  className="flex-1 min-w-0 bg-white/50 dark:bg-slate-800/50 px-4 py-2 rounded-2xl border-2 border-indigo-500 outline-none font-bold text-slate-900 dark:text-white shadow-inner"
+                />
+                <div className="flex gap-1 shrink-0">
+                  <button onClick={handleUpdateName} className="p-2 text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20 rounded-xl">
+                    <Check size={20} />
+                  </button>
+                  <button onClick={() => { setName(album.name); setIsEditing(false); }} className="p-2 text-rose-500 bg-rose-50 dark:bg-rose-900/20 rounded-xl">
+                    <X size={20} />
+                  </button>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 cursor-pointer group/title" onClick={() => setIsEditing(true)}>
-              <h3 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white tracking-tighter leading-none uppercase truncate">
-                {album.name}
-              </h3>
-              <Edit3 size={16} className="text-indigo-400 opacity-0 group-hover/title:opacity-100 transition-all transform hover:scale-110" />
-            </div>
-          )}
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
-            <span className="w-1 h-1 rounded-full bg-indigo-400 animate-pulse" />
-            {localImages.length} Memories
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2 sm:gap-3">
-          <UploadButton albumId={album._id} onSuccess={onUpdate} />
-          <button 
-            onClick={handleDeleteAlbum}
-            className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all"
-          >
-            <Trash2 size={20} />
-          </button>
-        </div>
-      </div>
-
-      {/* Optimized Internal Scrollable Grid */}
-      <div className="relative overflow-hidden">
-        <div 
-          className="max-h-[480px] overflow-y-auto pr-2 custom-scrollbar transition-all duration-300 transform-gpu"
-          style={{ willChange: "scroll-position", contain: "content" }}
-        >
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 pb-6">
-            {localImages.length > 0 ? (
-              localImages.map((img, idx) => (
-                <motion.div
-                  key={img.publicId}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  transition={{ delay: idx * 0.05 }}
-                  className="group/img relative aspect-square rounded-[1.5rem] overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
-                >
-                  <Image
-                    src={img.url}
-                    alt={img.title}
-                    fill
-                    sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
-                    loading="lazy"
-                    className="object-cover transition-transform duration-700 group-hover/img:scale-110"
-                  />
-                  <div className="absolute inset-0 bg-slate-950/40 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center backdrop-blur-[1px] z-10">
-                    <button 
-                      onClick={() => handleDeleteImage(img.publicId)}
-                      className="p-3 bg-white/20 backdrop-blur-xl text-white rounded-2xl hover:bg-rose-500 transition-all active:scale-90"
-                    >
-                      <Trash2 size={20} />
-                    </button>
-                  </div>
-                </motion.div>
-              ))
             ) : (
-              <div className="col-span-full flex flex-col items-center justify-center py-20 text-slate-300 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
-                <ImageIcon size={48} strokeWidth={1} className="mb-4 text-slate-200" />
-                <p className="text-xs font-black uppercase tracking-[0.2em]">Album is empty</p>
+              <div className="flex items-center gap-2 cursor-pointer group/title" onClick={() => setIsEditing(true)}>
+                <h3 className="text-xl sm:text-2xl font-black text-slate-950 dark:text-white tracking-tighter leading-none uppercase truncate">
+                  {album.name}
+                </h3>
+                <Edit3 size={16} className="text-indigo-400 opacity-0 group-hover/title:opacity-100 transition-all transform hover:scale-110" />
               </div>
             )}
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+              <span className="w-1 h-1 rounded-full bg-indigo-400 animate-pulse" />
+              {localImages.length} Memories
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 sm:gap-3">
+            <UploadButton albumId={album._id} onSuccess={onUpdate} />
+            <button 
+              onClick={handleDeleteAlbum}
+              className="p-3 text-slate-300 hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-2xl transition-all"
+            >
+              <Trash2 size={20} />
+            </button>
           </div>
         </div>
-        
-        {localImages.length > 10 && (
-          <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/90 dark:from-slate-900/90 to-transparent pointer-events-none rounded-b-[2rem] z-20" />
+
+        {/* Optimized Internal Scrollable Grid */}
+        <div className="relative overflow-hidden">
+          <div 
+            className="max-h-[480px] overflow-y-auto pr-2 custom-scrollbar transition-all duration-300 transform-gpu"
+            style={{ willChange: "scroll-position", contain: "content" }}
+          >
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 sm:gap-4 pb-6">
+              {localImages.length > 0 ? (
+                localImages.map((img, idx) => (
+                  <motion.div
+                    key={img.publicId}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className="group/img relative aspect-square rounded-[1.5rem] overflow-hidden bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-800"
+                  >
+                    {/* Delete Button - Fixed at Top-Right */}
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleDeleteImage(img.publicId);
+                      }}
+                      className="absolute top-2 right-2 z-20 p-2.5 bg-black/40 backdrop-blur-xl text-white rounded-xl opacity-0 group-hover/img:opacity-100 sm:opacity-0 sm:group-hover/img:opacity-100 transition-all active:scale-90 hover:bg-rose-500 shadow-lg border border-white/10 flex items-center justify-center
+                        /* LUÔN HIỆN TRÊN MOBILE ĐỂ DỄ DÙNG */
+                        max-sm:opacity-80 max-sm:bg-black/20" 
+                    >
+                      <Trash2 size={16} />
+                    </button>
+
+                    {/* Image Click Area */}
+                    <div 
+                      onClick={() => setSelectedImageUrl(img.url)}
+                      className="relative h-full w-full cursor-zoom-in"
+                    >
+                      <Image
+                        src={img.url}
+                        alt={img.title}
+                        fill
+                        sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 20vw"
+                        loading="lazy"
+                        className="object-cover transition-transform duration-700 group-hover/img:scale-105"
+                      />
+                      
+                      {/* Zoom Indicator on Hover */}
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover/img:opacity-100 transition-all flex items-center justify-center">
+                        <Maximize2 className="text-white drop-shadow-lg" size={24} />
+                      </div>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="col-span-full flex flex-col items-center justify-center py-20 text-slate-300 border-2 border-dashed border-slate-100 dark:border-slate-800 rounded-[2rem]">
+                  <ImageIcon size={48} strokeWidth={1} className="mb-4 text-slate-200" />
+                  <p className="text-xs font-black uppercase tracking-[0.2em]">Album is empty</p>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          {localImages.length > 10 && (
+            <div className="absolute bottom-0 left-0 right-0 h-16 bg-gradient-to-t from-white/90 dark:from-slate-900/90 to-transparent pointer-events-none rounded-b-[2rem] z-20" />
+          )}
+        </div>
+      </motion.div>
+
+      {/* Lightbox Preview Modal */}
+      <AnimatePresence>
+        {selectedImageUrl && (
+          <div className="fixed inset-0 z-300 flex items-center justify-center p-4 sm:p-10">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedImageUrl(null)}
+              className="absolute inset-0 bg-slate-950/90 backdrop-blur-2xl cursor-zoom-out"
+            />
+            
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full h-full max-w-6xl max-h-[85vh] rounded-[2rem] overflow-hidden shadow-2xl z-10"
+            >
+              <Image
+                src={selectedImageUrl}
+                alt="Full preview"
+                fill
+                priority
+                className="object-contain"
+              />
+              
+              {/* Close Button UI */}
+              <button
+                onClick={() => setSelectedImageUrl(null)}
+                className="absolute top-4 right-4 sm:top-8 sm:right-8 p-3 bg-white/10 hover:bg-white/20 backdrop-blur-xl text-white rounded-full transition-all active:scale-95 shadow-2xl border border-white/10"
+              >
+                <X size={24} />
+              </button>
+            </motion.div>
+          </div>
         )}
-      </div>
-    </motion.div>
+      </AnimatePresence>
+    </>
   );
 }
 
