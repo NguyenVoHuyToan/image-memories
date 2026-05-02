@@ -29,7 +29,16 @@ export async function POST(req: NextRequest) {
 
     const buffer = Buffer.from(await file.arrayBuffer());
 
-    await dbConnect();
+    // 3. Connect to Database
+    try {
+      await dbConnect();
+    } catch (dbError: any) {
+      console.error('Database connection failed in Upload API:', dbError);
+      return NextResponse.json(
+        { error: "Không thể kết nối đến cơ sở dữ liệu để lưu thông tin ảnh." }, 
+        { status: 503 }
+      );
+    }
 
     const uploadResult = await uploadStream(buffer, "memories");
 
